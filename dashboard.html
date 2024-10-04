@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive US Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+</head>
+<body>
+    <div id="map" style="height: 600px;"></div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Set the map's initial view to the United States with appropriate latitude, longitude, and zoom level
+        var map = L.map('map').setView([37.0902, -95.7129], 4);  // Center on the US, zoom level 4
+
+        // Load and display the OpenStreetMap tiles on the map
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add a marker for an example location (you can add multiple markers for US cities)
+        var marker = L.marker([38.89511, -77.03637]).addTo(map)  // Washington D.C.
+            .bindPopup('<b>Washington D.C.</b><br />Capital of the USA').openPopup();
+
+        // Event listener to get coordinates on map click
+        map.on('click', function(e) {
+            var lat = e.latlng.lat;
+            var lng = e.latlng.lng;
+            alert("You clicked at Latitude: " + lat + ", Longitude: " + lng);
+        });
+    </script>
+</body>
+</html>
