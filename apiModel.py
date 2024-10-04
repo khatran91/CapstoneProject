@@ -16,7 +16,7 @@ params = {
 	"latitude": 41.2563,
 	"longitude": -95.9404,
 	"start_date": "2024-01-01",
-	"end_date": "2024-09-30",
+	"end_date": "2024-10-04",
 	"hourly": "temperature_2m"
 }
 responses = openmeteo.weather_api(url, params=params)
