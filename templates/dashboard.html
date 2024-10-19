@@ -10,11 +10,12 @@
 </head>
 <body>
     <div id="map" style="height: 600px;"></div>
+    <div id="prediction"></div> <!-- Display prediction here -->
 
     <!-- Leaflet JS -->
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        // Set the map's initial view to the United States with appropriate latitude, longitude, and zoom level
+        // Set the map's initial view to the United States
         var map = L.map('map').setView([37.0902, -95.7129], 4);  // Center on the US, zoom level 4
 
         // Load and display the OpenStreetMap tiles on the map
@@ -22,15 +23,29 @@
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
 
-        // Add a marker for an example location (you can add multiple markers for US cities)
-        var marker = L.marker([38.89511, -77.03637]).addTo(map)  // Washington D.C.
-            .bindPopup('<b>Washington D.C.</b><br />Capital of the USA').openPopup();
-
         // Event listener to get coordinates on map click
         map.on('click', function(e) {
             var lat = e.latlng.lat;
             var lng = e.latlng.lng;
-            alert("You clicked at Latitude: " + lat + ", Longitude: " + lng);
+
+            // Call Flask API with the selected coordinates
+            fetch('/get_weather', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    latitude: lat,
+                    longitude: lng
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Display the predicted temperature in the div
+                document.getElementById('prediction').innerHTML = 
+                    "Predicted temperature in 1 year: " + data.predicted_temperature + "°C";
+            })
+            .catch(error => console.error('Error:', error));
         });
     </script>
 </body>
