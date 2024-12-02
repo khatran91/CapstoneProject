@@ -32,19 +32,19 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_
 X_train_df = pd.DataFrame(X_train)
 
 # Now you can use isna() on X_train_df
-print(X_train_df.isna().sum())
+#print(X_train_df.isna().sum())
 
 # Print the type of y_train
-print("Type of y_train:", type(y_train))
+#print("Type of y_train:", type(y_train))
 
 # Print a few values of y_train to inspect its contents
-print("First few values of y_train:", y_train[:10])
+#print("First few values of y_train:", y_train[:10])
 
 # Convert y_train to a pandas Series first to use pd.to_numeric
 y_train = pd.to_numeric(y_train, errors='coerce')  # 'coerce' will turn invalid values into NaN
 
 # Check the conversion result
-print("NaNs in y_train after conversion:", pd.isna(y_train).sum())
+#print("NaNs in y_train after conversion:", pd.isna(y_train).sum())
 
 # Identify non-NaN indices for y_train
 mask_y_train = ~np.isnan(y_train)
@@ -54,8 +54,8 @@ X_train_clean = X_train[mask_y_train]
 y_train_clean = y_train[mask_y_train]
 
 # Verify no NaNs are present
-print("NaNs in X_train after cleaning:", np.isnan(X_train_clean).sum())
-print("NaNs in y_train after cleaning:", np.isnan(y_train_clean).sum())
+#print("NaNs in X_train after cleaning:", np.isnan(X_train_clean).sum())
+#print("NaNs in y_train after cleaning:", np.isnan(y_train_clean).sum())
 
 # Initialize the model
 model = LinearRegression()
@@ -71,8 +71,8 @@ mse_train = mean_squared_error(y_train_clean, y_train_pred)  # Mean Squared Erro
 r2_train = r2_score(y_train_clean, y_train_pred)  # R-squared value
 
 # Print out the evaluation metrics for training data
-print(f"Training Mean Squared Error (MSE): {mse_train}")
-print(f"Training R-squared (R²): {r2_train}")
+#print(f"Training Mean Squared Error (MSE): {mse_train}")
+#print(f"Training R-squared (R²): {r2_train}")
 
 # Now, for testing data
 
@@ -80,7 +80,7 @@ print(f"Training R-squared (R²): {r2_train}")
 y_test = pd.to_numeric(y_test, errors='coerce')
 
 # Check for NaNs in y_test
-print("NaNs in y_test:", np.isnan(y_test).sum())
+#print("NaNs in y_test:", np.isnan(y_test).sum())
 
 # Clean the data by removing NaNs from y_test
 mask_test = ~np.isnan(y_test)  # Mask to remove NaNs
@@ -152,5 +152,7 @@ def predict_temperature():
     except ValueError:
         print("Invalid date format. Please use the format YYYY-MM-DD HH:MM:SS")
 
-# Call the function
-predict_temperature()
+# Calls the function
+# predict_temperature()
+
+print(weather.data)

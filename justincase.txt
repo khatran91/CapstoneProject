@@ -1,0 +1,110 @@
+#######
+# # Check for any non-numeric values and filter them out
+# # Convert to numeric, errors='coerce' will turn non-numeric values into NaN
+# temperature_data = pd.to_numeric(temperature_data, errors='coerce')
+
+# # Drop any rows with NaN values
+# temperature_data = temperature_data[~np.isnan(temperature_data)]
+
+# # Reshape to a 2D array for scaling
+# temperature_data = temperature_data.reshape(-1, 1)
+
+# # Scale the data to [0, 1] range
+# scaler = MinMaxScaler(feature_range=(0, 1))
+# scaled_temperature = scaler.fit_transform(temperature_data)
+
+# # Prepare sequences for LSTM (using the past 60 hours to predict the next one)
+# sequence_length = 60
+# X, y = [], []
+
+# for i in range(sequence_length, len(scaled_temperature)):
+#     X.append(scaled_temperature[i-sequence_length:i, 0])  # Previous 60 values
+#     y.append(scaled_temperature[i, 0])  # Next value (temperature to predict)
+
+# X, y = np.array(X), np.array(y)
+
+# # Reshape X for LSTM input (samples, time steps, features)
+# X = X.reshape((X.shape[0], X.shape[1], 1))
+
+# # Split into training and test sets
+# X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# # Define the LSTM model
+# model = Sequential([
+#     LSTM(50, return_sequences=True, input_shape=(X_train.shape[1], 1)),
+#     Dropout(0.2),
+#     LSTM(50, return_sequences=False),
+#     Dropout(0.2),
+#     Dense(25),
+#     Dense(1)
+# ])
+
+# # Compile the model
+# model.compile(optimizer='adam', loss='mean_squared_error')
+
+# # Train the model
+# history = model.fit(X_train, y_train, epochs=20, batch_size=32, validation_data=(X_test, y_test))
+
+# # Predict on the test set
+# predictions = model.predict(X_test)
+
+# # Inverse transform the predictions and actual values to original scale
+# predictions = scaler.inverse_transform(predictions.reshape(-1, 1))
+# y_test_original = scaler.inverse_transform(y_test.reshape(-1, 1))
+
+# # Calculate Mean Squared Error
+# mse = np.mean((predictions - y_test_original) ** 2)
+# print(f"Mean Squared Error: {mse}")
+
+# # Plot the results
+# plt.figure(figsize=(10, 6))
+# plt.plot(y_test_original, label='Actual Temperature')
+# plt.plot(predictions, label='Predicted Temperature')
+# plt.legend()
+# plt.title("LSTM Weather Prediction")
+# plt.xlabel("Time")
+# plt.ylabel("Temperature (°F)")
+# plt.show()
+
+# # Function to predict the future temperatures (in days or weeks)
+# def predict_future_temperature(model, last_sequence, n_predictions, scaler):
+#     """
+#     Predict future temperatures based on the last available data sequence.
+    
+#     :param model: Trained LSTM model
+#     :param last_sequence: The most recent sequence of data points
+#     :param n_predictions: Number of future time steps to predict (e.g., 7 for a week)
+#     :param scaler: The scaler used to scale the data
+#     :return: Predicted future temperatures
+#     """
+#     predictions = []
+    
+#     # Reshape the sequence for LSTM input
+#     current_sequence = last_sequence.reshape((1, last_sequence.shape[0], 1))
+    
+#     # Predict the future values one by one (not using predicted values as inputs)
+#     for _ in range(n_predictions):
+#         # Predict the next value
+#         next_value = model.predict(current_sequence)
+        
+#         # Inverse transform the predicted value back to the original scale
+#         next_value = scaler.inverse_transform(next_value.reshape(-1, 1))
+#         predictions.append(next_value[0, 0])
+        
+#         # Update the sequence with the last predicted value
+#         # The next day's prediction is not used as an input for further prediction.
+#         current_sequence = np.append(current_sequence[:, 1:, :], next_value.reshape(1, 1, 1), axis=1)
+    
+#     return predictions
+
+# # Get the most recent sequence of data points from the test set
+# last_sequence = X_test[-1, :, 0]
+
+# # Predict the next 7 days (1 week)
+# n_predictions = 7
+# future_predictions = predict_future_temperature(model, last_sequence, n_predictions, scaler)
+
+# # Print the future temperature predictions for the next 7 days
+# print("Future Temperature Predictions for the next week (°F):")
+# for i, temp in enumerate(future_predictions):
+#     print(f"Day {i+1}: {temp:.2f}°F")
