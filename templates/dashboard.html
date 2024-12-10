@@ -18,10 +18,11 @@
         }
         #map-container {
             width: 65%;
-            height: 100vh;
+            height: 100vh; /* Ensure it takes full height */
+            position: relative; /* For map positioning, if necessary */
         }
         #map {
-            height: 100%;
+            height: 100%; /* Ensure the map div has height */
         }
         .us-focused-tile {
             filter: grayscale(90%) brightness(0.8);
@@ -95,14 +96,15 @@
             <option value="Chicago">Chicago, IL</option>
             <!-- Add other major US cities here -->
         </select>
-
-        <label for="start-date">Select Start Date:</label>
-        <input type="date" id="start-date" min="" />
-
-        <label for="end-date">Select End Date:</label>
-        <input type="date" id="end-date" disabled />
-
-        <button id="submit">Get Forecast</button>
+        <form id="weather-form">
+            <label for="start_date">Start Date:</label>
+            <input type="date" name="start_date" id="start_date" required min="{{ current_date }}"/>
+            
+            <label for="end_date">End Date:</label>
+            <input type="date" name="end_date" id="end_date" required min="{{ week_later }}" max="{{ six_months_later }}"/>
+            
+            <button type="submit" id="submit">Get Forecast</button>
+        </form>
     </div>
     
     <div id="prediction">
@@ -114,155 +116,73 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-    // Define map bounds to limit the view to the US
-    const usBounds = [
-        [24.396308, -125.0], // Southwest corner (Hawaii/California)
-        [49.384358, -66.93457] // Northeast corner (Maine)
-    ];
+    // Wait for DOM to load before initializing the map
+    document.addEventListener("DOMContentLoaded", function () {
+        // Initialize the map
+        const usBounds = [
+            [24.396308, -125.0], 
+            [49.384358, -66.93457]
+        ];
 
-    // Initialize the map with view restricted to the US and limited zoom out
-    var map = L.map('map', {
-        center: [37.0902, -95.7129], // Center of the US
-        zoom: 4,
-        maxZoom: 12, // Allow zoom in to a reasonable level
-        minZoom: 4, // Prevent excessive zooming out
-        maxBounds: usBounds, // Limit map to the US boundaries
-        maxBoundsViscosity: 1.0 // Prevents panning outside bounds
-    });
+        var map = L.map('map', {
+            center: [37.0902, -95.7129],
+            zoom: 4,
+            maxBounds: usBounds,
+            maxBoundsViscosity: 1.0
+        });
 
-    // Add a tile layer with a subtle grayscale filter for non-US areas
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© OpenStreetMap contributors, © CartoDB',
-        className: 'us-focused-tile' // This will help with CSS styling
-    }).addTo(map);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© OpenStreetMap contributors, © CartoDB',
+            className: 'us-focused-tile'
+        }).addTo(map);
 
-    // Set min date for start date as tomorrow
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-    document.getElementById("start-date").min = tomorrow.toISOString().split('T')[0];
-
-    // Date Selection Logic
-    document.getElementById("start-date").addEventListener("change", function() {
-        const startDate = new Date(this.value);
-        const maxEndDate = new Date(startDate);
-        maxEndDate.setDate(startDate.getDate() + 7);
-        document.getElementById("end-date").min = this.value;
-        document.getElementById("end-date").max = maxEndDate.toISOString().split('T')[0];
-        document.getElementById("end-date").disabled = false;
-    });
-
-    //getting user's location úing geolocation
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            function (position) {
+        // Fetch current weather based on geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function (position) {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
 
                 document.getElementById('current-weather').innerText = `Fetching weather for: Lat ${lat}, Lon ${lon}`;
 
-                // Optional: Fetch weather data using lat/lon
                 fetch('/get_current_weather', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        latitude: lat,
-                        longitude: lon
-                    })
+                    body: JSON.stringify({ latitude: lat, longitude: lon })
                 })
                 .then(response => response.json())
                 .then(data => {
-                    document.getElementById('current-weather').innerText = 
-                        `${data.weather_description}, ${data.temperature}°F`;
+                    document.getElementById('current-weather').innerText = `${data.weather}, ${data.temperature}°F`;
                 })
                 .catch(error => {
                     console.error('Error fetching weather data:', error);
-                    document.getElementById('current-weather').innerText = 
-                        "Error fetching weather data.";
+                    document.getElementById('current-weather').innerText = "Error fetching weather data.";
                 });
-            },
-            function (error) {
-                console.error('Error accessing geolocation:', error.message);
-                document.getElementById('current-weather').innerText = 
-                    "Unable to access location.";
-            }
-        );
-    } else {
-        document.getElementById('current-weather').innerText = 
-            "Geolocation is not supported by this browser.";
-    }
-
-    // Fetch default weather for 7 days starting today
-    function fetchDefaultWeather() {
-        navigator.geolocation.getCurrentPosition(position => {
-            const { latitude, longitude } = position.coords;
-
-            // Fetch 7-day forecast for the current location
-            fetch('/get_weather', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    latitude: latitude,
-                    longitude: longitude,
-                    start_date: new Date().toISOString().split('T')[0],
-                    end_date: new Date(new Date().setDate(new Date().getDate() + 6)).toISOString().split('T')[0]
-                })
-            })
-            .then(response => response.json())
-            .then(data => {
-                const forecastHTML = data.forecast.map((day) => `
-                    <tr>
-                        <td>${day.date}</td>
-                        <td>${day.condition}</td>
-                        <td>${day.temperature}°F</td>
-                    </tr>
-                `).join("");
-
-                document.getElementById('prediction').innerHTML = `
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Condition</th>
-                                <th>Temperature</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${forecastHTML}
-                        </tbody>
-                    </table>
-                `;
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('prediction').innerHTML = "Error fetching the current weather forecast.";
             });
-        }, error => {
-            console.error('Geolocation error:', error);
-            document.getElementById('prediction').innerHTML = "Unable to access location.";
-        });
-    }
-
-    // Submit button to get forecast for selected city
-    document.getElementById("submit").addEventListener("click", function() {
-        const city = document.getElementById("city").value;
-        const startDate = document.getElementById("start-date").value;
-        const endDate = document.getElementById("end-date").value;
-        
-        if (!startDate || !endDate || !city) {
-            alert("Please select both start and end dates, and a city.");
-            return;
+        } else {
+            document.getElementById('current-weather').innerText = "Geolocation is not supported by this browser.";
         }
 
+    // Handle the form submission
+    document.getElementById("weather-form").addEventListener("submit", function (event) {
+        event.preventDefault(); // Prevent the default form submission
+
+        const city = document.getElementById("city").value;
+        const startDate = document.getElementById("start_date").value;  // Capture latest date
+        const endDate = document.getElementById("end_date").value;      // Capture latest date
+
+        // Logging the values to see what is captured
+        console.log("Selected City:", city);
+        console.log("Start Date:", startDate);
+        console.log("End Date:", endDate);
+
         const cityCoordinates = {
-            "New York": {lat: 40.7128, lon: -74.0060},
-            "Los Angeles": {lat: 34.0522, lon: -118.2437},
-            "Chicago": {lat: 41.8781, lon: -87.6298}
+            "New York": { lat: 40.7128, lon: -74.0060 },
+            "Los Angeles": { lat: 34.0522, lon: -118.2437 },
+            "Chicago": { lat: 41.8781, lon: -87.6298 }
         };
 
         const coordinates = cityCoordinates[city];
-        
-        // Call the Flask API with selected data
+
         fetch('/get_weather', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -275,17 +195,15 @@
         })
         .then(response => response.json())
         .then(data => {
-            document.getElementById('prediction').innerHTML = 
-                `Forecast for ${city} from ${startDate} to ${endDate}: ` + data.forecast.join(", ");
+            const forecastHTML = data.forecast.map(day => `<li>${day.date}: ${day.condition}, ${day.temperature}°F</li>`).join('');
+            document.getElementById('prediction').innerHTML = `<p>Forecast for ${city} from ${startDate} to ${endDate}:</p><ul>${forecastHTML}</ul>`;
         })
         .catch(error => {
-            console.error('Error:', error);
+            console.error('Error fetching the forecast:', error);
             document.getElementById('prediction').innerHTML = "Error fetching the forecast.";
-        });
     });
-
-    // Fetch default weather on page load
-    window.onload = fetchDefaultWeather;
+    });
+});
 </script>
 
 </body>

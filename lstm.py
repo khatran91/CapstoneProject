@@ -1,13 +1,14 @@
+from sklearn.model_selection import train_test_split
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import LSTM, Dense, Dropout
-#from datetime import datetime
+from datetime import timedelta
 
-# Load the weather dataset (skip first 2 rows)
+
+# Load the weather dataset (skip pyfirst 2 rows)
 weather = pd.read_csv("weather2024.csv", skiprows=2)
 
 # Display the columns to confirm correct loading
@@ -49,6 +50,31 @@ target_year, target_week, user_input_date = get_week_from_date()
 
 # Filter data for the same week in previous years
 historical_week_data = weather[(weather['week'] == target_week) & (weather['year'] < target_year)]
+
+### New
+
+def predict_weather(start_date, end_date):
+    
+    # Add logic to generate predictions based on the date range
+    # For example, load the model, make predictions for each day in the range, and return the results
+    
+    predictions = []
+    current_date = start_date
+    while current_date <= end_date:
+        # Simulate a prediction (you should replace this with actual prediction logic)
+        prediction = {
+            'date': current_date.strftime("%Y-%m-%d"),
+            'condition': 'Sunny',  # Example condition
+            'temperature': 75  # Example temperature
+        }
+        predictions.append(prediction)
+        current_date = current_date + timedelta(days=1)
+    
+    return predictions
+
+
+####
+
 
 # Check if there is enough data
 if historical_week_data.empty:
