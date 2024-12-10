@@ -1,40 +1,48 @@
 from flask import Flask, request, jsonify, render_template
-import apiModel
-from statsmodels.tsa.arima.model import ARIMA
+import lstm  # Import the refactored LSTM module
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
+    """Render the dashboard for user interaction."""
     return render_template('dashboard.html')
 
 @app.route('/get_weather', methods=['POST'])
 def get_weather():
-    data = request.json
-    latitude = data['latitude']
-    longitude = data['longitude']
+    """
+    API endpoint to get weather predictions based on user input.
+    Receives JSON payload with 'city' and 'start_date'.
+    """
+    try:
+        # Parse user inputs from the request
+        data = request.json
+        city = data['city']
+        start_date = data['start_date']
 
-    # Call OpenMeteo API to get historical data
-    historical_data = apiModel.get_historical_data(latitude, longitude)
+        # Load city-specific weather data
+        weather_data = lstm.load_city_data(city)
 
-    # Predict temperature one year in advance using ARIMA
-    prediction = predict_weather(historical_data)
+        # Predict weather using LSTM
+        predicted_temperature = lstm.predict_weather(weather_data, start_date)
 
-    return jsonify({"predicted_temperature": prediction})
+        # Format predictions for frontend display
+        formatted_predictions = lstm.format_predictions(predicted_temperature, start_date)
 
-def predict_weather(historical_data):
-    # Assuming 'temperature_2m' is the column name in the DataFrame with historical temperature data
-    temperature_series = historical_data['temperature_2m']
+        # Return the predictions as JSON
+        return jsonify({
+            "success": True,
+            "predictions": formatted_predictions
+        })
 
-    # ARIMA model: (p=5, d=1, q=0)
-    model = ARIMA(temperature_series, order=(5, 1, 0))
-    model_fit = model.fit()
+    except FileNotFoundError:
+        return jsonify({"success": False, "error": f"Data for {city} not found. Please try another city."}), 404
 
-    # Predict the temperature for 365 days in the future
-    prediction = model_fit.forecast(steps=365)
-    
-    # Return the predicted temperature for exactly 1 year from the last date
-    return prediction[-1]  # Return the final value of the forecast for the last day
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
+
+    except Exception as e:
+        return jsonify({"success": False, "error": "An unexpected error occurred.", "details": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5001)
