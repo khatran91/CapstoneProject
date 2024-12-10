@@ -3,50 +3,290 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Interactive US Map</title>
+    <title>Interactive Weather Map</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        /* Global Styling */
+        body {
+            display: flex;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            color: #333;
+        }
+        #map-container {
+            width: 65%;
+            height: 100%; /* vh */
+        }
+        #map {
+            height: 100%;
+        }
+        .us-focused-tile {
+            filter: grayscale(90%) brightness(0.8);
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            width: 35%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            box-shadow: -2px 0px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #sidebar h2 {
+            margin: 0;
+            color: #4A90E2;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        select, input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+        }
+        #submit {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            color: #fff;
+            background-color: #4A90E2;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #submit:hover {
+            background-color: #357ABD;
+        }
+        #prediction {
+            margin-top: 20px;
+            font-size: 1.1em;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0px 1px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+    </style>
 </head>
 <body>
-    <div id="map" style="height: 600px;"></div>
-    <div id="prediction"></div> <!-- Display prediction here -->
 
-    <!-- Leaflet JS -->
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script>
-        // Set the map's initial view to the United States
-        var map = L.map('map').setView([37.0902, -95.7129], 4);  // Center on the US, zoom level 4
+<div id="map-container">
+    <div id="map"></div>
+</div>
 
-        // Load and display the OpenStreetMap tiles on the map
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+<div id="sidebar">
+    <h2>Weather Forecast</h2>
+    <div>
+        <label for="city">Select a City:</label>
+        <select id="city">
+            <option value="New York">New York, NY</option>
+            <option value="Los Angeles">Los Angeles, CA</option>
+            <option value="Chicago">Chicago, IL</option>
+            <!-- Add other major US cities here -->
+        </select>
 
-        // Event listener to get coordinates on map click
-        map.on('click', function(e) {
-            var lat = e.latlng.lat;
-            var lng = e.latlng.lng;
+        <label for="start-date">Select Start Date:</label>
+        <input type="date" id="start-date" min="" />
 
-            // Call Flask API with the selected coordinates
+        <label for="end-date">Select End Date:</label>
+        <input type="date" id="end-date" disabled />
+
+        <button id="submit">Get Forecast</button>
+    </div>
+    
+    <div id="prediction">
+        <p>Current weather in your location: <strong><span id="current-weather">Sunny, 75°F</span></strong></p>
+    </div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    // Define map bounds to limit the view to the US
+    const usBounds = [
+        [24.396308, -125.0], // Southwest corner (Hawaii/California)
+        [49.384358, -66.93457] // Northeast corner (Maine)
+    ];
+
+    // Initialize the map with view restricted to the US and limited zoom out
+    var map = L.map('map', {
+        center: [37.0902, -95.7129], // Center of the US
+        zoom: 4,
+        maxZoom: 12, // Allow zoom in to a reasonable level
+        minZoom: 4, // Prevent excessive zooming out
+        maxBounds: usBounds, // Limit map to the US boundaries
+        maxBoundsViscosity: 1.0 // Prevents panning outside bounds
+    });
+
+    // Add a tile layer with a subtle grayscale filter for non-US areas
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors, © CartoDB',
+        className: 'us-focused-tile' // This will help with CSS styling
+    }).addTo(map);
+
+    // Set min date for start date as tomorrow
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    document.getElementById("start-date").min = tomorrow.toISOString().split('T')[0];
+
+    // Date Selection Logic
+    document.getElementById("start-date").addEventListener("change", function() {
+        const startDate = new Date(this.value);
+        const maxEndDate = new Date(startDate);
+        maxEndDate.setDate(startDate.getDate() + 7);
+        document.getElementById("end-date").min = this.value;
+        document.getElementById("end-date").max = maxEndDate.toISOString().split('T')[0];
+        document.getElementById("end-date").disabled = false;
+    });
+
+    //getting user's location úing geolocation
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+
+                document.getElementById('current-weather').innerText = `Fetching weather for: Lat ${lat}, Lon ${lon}`;
+
+                // Optional: Fetch weather data using lat/lon
+                fetch('/get_current_weather', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        latitude: lat,
+                        longitude: lon
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('current-weather').innerText = 
+                        `${data.weather_description}, ${data.temperature}°F`;
+                })
+                .catch(error => {
+                    console.error('Error fetching weather data:', error);
+                    document.getElementById('current-weather').innerText = 
+                        "Error fetching weather data.";
+                });
+            },
+            function (error) {
+                console.error('Error accessing geolocation:', error.message);
+                document.getElementById('current-weather').innerText = 
+                    "Unable to access location.";
+            }
+        );
+    } else {
+        document.getElementById('current-weather').innerText = 
+            "Geolocation is not supported by this browser.";
+    }
+
+    // Fetch default weather for 7 days starting today
+    function fetchDefaultWeather() {
+        navigator.geolocation.getCurrentPosition(position => {
+            const { latitude, longitude } = position.coords;
+
+            // Fetch 7-day forecast for the current location
             fetch('/get_weather', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    latitude: lat,
-                    longitude: lng
+                    latitude: latitude,
+                    longitude: longitude,
+                    start_date: new Date().toISOString().split('T')[0],
+                    end_date: new Date(new Date().setDate(new Date().getDate() + 6)).toISOString().split('T')[0]
                 })
             })
             .then(response => response.json())
             .then(data => {
-                // Display the predicted temperature in the div
-                document.getElementById('prediction').innerHTML = 
-                    "Predicted temperature in 1 year: " + data.predicted_temperature + "°C";
+                const forecastHTML = data.forecast.map((day) => `
+                    <tr>
+                        <td>${day.date}</td>
+                        <td>${day.condition}</td>
+                        <td>${day.temperature}°F</td>
+                    </tr>
+                `).join("");
+
+                document.getElementById('prediction').innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Condition</th>
+                                <th>Temperature</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${forecastHTML}
+                        </tbody>
+                    </table>
+                `;
             })
-            .catch(error => console.error('Error:', error));
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('prediction').innerHTML = "Error fetching the current weather forecast.";
+            });
+        }, error => {
+            console.error('Geolocation error:', error);
+            document.getElementById('prediction').innerHTML = "Unable to access location.";
         });
-    </script>
+    }
+
+    // Submit button to get forecast for selected city
+    document.getElementById("submit").addEventListener("click", function() {
+        const city = document.getElementById("city").value;
+        const startDate = document.getElementById("start-date").value;
+        const endDate = document.getElementById("end-date").value;
+        
+        if (!startDate || !endDate || !city) {
+            alert("Please select both start and end dates, and a city.");
+            return;
+        }
+
+        const cityCoordinates = {
+            "New York": {lat: 40.7128, lon: -74.0060},
+            "Los Angeles": {lat: 34.0522, lon: -118.2437},
+            "Chicago": {lat: 41.8781, lon: -87.6298}
+        };
+
+        const coordinates = cityCoordinates[city];
+        
+        // Call the Flask API with selected data
+        fetch('/get_weather', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                latitude: coordinates.lat,
+                longitude: coordinates.lon,
+                start_date: startDate,
+                end_date: endDate
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('prediction').innerHTML = 
+                `Forecast for ${city} from ${startDate} to ${endDate}: ` + data.forecast.join(", ");
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('prediction').innerHTML = "Error fetching the forecast.";
+        });
+    });
+
+    // Fetch default weather on page load
+    window.onload = fetchDefaultWeather;
+</script>
+
 </body>
 </html>

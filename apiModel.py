@@ -8,13 +8,13 @@ cache_session = requests_cache.CachedSession('.cache', expire_after=3600)
 retry_session = retry(cache_session, retries=5, backoff_factor=0.2)
 openmeteo = openmeteo_requests.Client(session=retry_session)
 
-def get_historical_data(latitude, longitude):
+def get_historical_data(latitude, longitude, start_date, end_date):
     url = "https://historical-forecast-api.open-meteo.com/v1/forecast"
     params = {
         "latitude": latitude,
         "longitude": longitude,
-        "start_date": "2019-01-01",  # Example start date: 5 years back
-        "end_date": "2024-01-01",    # End date: current year
+        "start_date": start_date,  # "2019-01-01"
+        "end_date": end_date,    #"2024-01-01"
         "hourly": "temperature_2m"
     }
     

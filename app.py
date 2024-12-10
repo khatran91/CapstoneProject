@@ -1,40 +1,63 @@
-from flask import Flask, request, jsonify, render_template
-import apiModel
-from statsmodels.tsa.arima.model import ARIMA
+from flask import Flask, render_template, request, jsonify
+
+from lstm import display_predictions  # Import your LSTM model prediction function
+
+ 
 
 app = Flask(__name__)
 
+ 
+
 @app.route('/')
-def home():
-    return render_template('dashboard.html')
 
-@app.route('/get_weather', methods=['POST'])
-def get_weather():
-    data = request.json
-    latitude = data['latitude']
-    longitude = data['longitude']
+def index():
 
-    # Call OpenMeteo API to get historical data
-    historical_data = apiModel.get_historical_data(latitude, longitude)
+    return render_template('dashboard.html')  # Ensure 'dashboard.html' is in the 'templates' folder
 
-    # Predict temperature one year in advance using ARIMA
-    prediction = predict_weather(historical_data)
+ 
 
-    return jsonify({"predicted_temperature": prediction})
+@app.route('/submit', methods=['POST'])
 
-def predict_weather(historical_data):
-    # Assuming 'temperature_2m' is the column name in the DataFrame with historical temperature data
-    temperature_series = historical_data['temperature_2m']
+def submit():
 
-    # ARIMA model: (p=5, d=1, q=0)
-    model = ARIMA(temperature_series, order=(5, 1, 0))
-    model_fit = model.fit()
+    # Handle submitted data
 
-    # Predict the temperature for 365 days in the future
-    prediction = model_fit.forecast(steps=365)
-    
-    # Return the predicted temperature for exactly 1 year from the last date
-    return prediction[-1]  # Return the final value of the forecast for the last day
+    data = request.get_json()  # Get data from the form
 
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001)
+    return jsonify({"message": "Data received"}), 200
+
+ 
+
+# @app.route('/')
+
+# def index():
+
+#     return app.send_static_file('dashboard.html')  # Serve your HTML file
+
+# @app.route('/predict', methods=['POST'])
+
+# def predict():
+
+#     data = request.get_json()
+
+#     latitude = data.get('latitude')
+
+#     longitude = data.get('longitude')
+
+#     start_date = data.get('start_date')
+
+#     end_date = data.get('end_date')
+
+ 
+
+#     predictions = predict_weather(latitude, longitude, start_date, end_date)
+
+#     return jsonify(predictions)
+
+ 
+
+if __name__ == "__main__":
+
+    app.run(debug=True)
+
+ 
