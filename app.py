@@ -1,63 +1,50 @@
-from flask import Flask, render_template, request, jsonify
-
-from lstm import display_predictions  # Import your LSTM model prediction function
-
- 
+from flask import Flask, request, jsonify, render_template
+import lstm  # Import the refactored LSTM module
 
 app = Flask(__name__)
 
  
 
 @app.route('/')
+def home():
+    """Render the dashboard for user interaction."""
+    return render_template('dashboard.html')
 
-def index():
+@app.route('/get_weather', methods=['POST'])
+def get_weather():
+    """
+    API endpoint to get weather predictions based on user input.
+    Receives JSON payload with 'city' and 'start_date'.
+    """
+    try:
+        # Parse user inputs from the request
+        data = request.json
+        city = data['city']
+        start_date = data['start_date']
 
-    return render_template('dashboard.html')  # Ensure 'dashboard.html' is in the 'templates' folder
+        # Load city-specific weather data
+        weather_data = lstm.load_city_data(city)
 
- 
+        # Predict weather using LSTM
+        predicted_temperature = lstm.predict_weather(weather_data, start_date)
 
-@app.route('/submit', methods=['POST'])
+        # Format predictions for frontend display
+        formatted_predictions = lstm.format_predictions(predicted_temperature, start_date)
 
-def submit():
+        # Return the predictions as JSON
+        return jsonify({
+            "success": True,
+            "predictions": formatted_predictions
+        })
 
-    # Handle submitted data
+    except FileNotFoundError:
+        return jsonify({"success": False, "error": f"Data for {city} not found. Please try another city."}), 404
 
-    data = request.get_json()  # Get data from the form
+    except ValueError as ve:
+        return jsonify({"success": False, "error": str(ve)}), 400
 
-    return jsonify({"message": "Data received"}), 200
+    except Exception as e:
+        return jsonify({"success": False, "error": "An unexpected error occurred.", "details": str(e)}), 500
 
- 
-
-# @app.route('/')
-
-# def index():
-
-#     return app.send_static_file('dashboard.html')  # Serve your HTML file
-
-# @app.route('/predict', methods=['POST'])
-
-# def predict():
-
-#     data = request.get_json()
-
-#     latitude = data.get('latitude')
-
-#     longitude = data.get('longitude')
-
-#     start_date = data.get('start_date')
-
-#     end_date = data.get('end_date')
-
- 
-
-#     predictions = predict_weather(latitude, longitude, start_date, end_date)
-
-#     return jsonify(predictions)
-
- 
-
-if __name__ == "__main__":
-
-    app.run(debug=True)
-
- 
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5001)
