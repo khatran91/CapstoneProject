@@ -7,9 +7,9 @@ import datetime
 
 def load_city_data(city_name):
     """Load the weather data for a specific city."""
-    file_path = f"{city_name}.csv"  # Update path as needed
-    weather = pd.read_csv(file_path, skiprows=2)
-    # weather = pd.read_csv("Omaha.csv", skiprows=2)
+    # file_path = f"data/{city_name}.csv"  # Update path as needed
+    # weather = pd.read_csv(file_path, skiprows=2)
+    weather = pd.read_csv("Omaha.csv", skiprows=2)
     weather['time'] = pd.to_datetime(weather['time'])
     weather['year'] = weather['time'].dt.year
     weather['week'] = weather['time'].dt.isocalendar().week

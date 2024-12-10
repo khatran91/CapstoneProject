@@ -176,10 +176,18 @@
                 let output = `<h3>Forecast for ${city}:</h3>`;
 
                 predictions.forEach(day => {
-                    output += `<div class="day-forecast" onclick="toggleHourlyDetails('${day.date}')">
+                    const dayOfWeek = getDayOfWeek(day.date);
+
+                    /*output += `<div class="day-forecast" onclick="toggleHourlyDetails('${day.date}')">
                         <strong>${day.date}:</strong> 
                         Low: ${day.low}°F, High: ${day.high}°F
+                    </div>`;*/ 
+                    output += `<div class="day-forecast" onclick="toggleHourlyDetails('${day.date}')">
+                        <strong>${dayOfWeek}:</strong>  
+                        Low: ${day.low}°F, High: ${day.high}°F
                     </div>`;
+
+                    
                     output += `<div class="hourly-details" id="hourly-${day.date.replace(/-/g, '')}">`;
                     day.temperatures.forEach((temp, hour) => {
                         output += `<div>Hour ${hour}: ${temp.toFixed(2)}°F</div>`;
@@ -202,6 +210,12 @@
         const details = document.getElementById(`hourly-${date.replace(/-/g, '')}`);
         details.style.display = details.style.display === 'block' ? 'none' : 'block';
     }
+    function getDayOfWeek(date) {
+    const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const dayIndex = new Date(date).getDay();  // Get the day of the week (0-6)
+    return daysOfWeek[dayIndex];  // Return the corresponding day name
+}
+
 </script>
 
 </body>
