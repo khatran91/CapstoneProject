@@ -77,8 +77,18 @@ def format_predictions(predicted_temperature, start_date):
     for day_offset in range(7):  # Loop through 7 days
         current_date = start_date + datetime.timedelta(days=day_offset)
         day_temps = predicted_temperature[0][day_offset * 24:(day_offset + 1) * 24]
+
+        # Round temperatures to the nearest whole number
+        rounded_day_temps = [round(temp) for temp in day_temps]
+
+        # Calculate daily low and high temperatures
+        low_temp = float(min(rounded_day_temps))
+        high_temp = float(max(rounded_day_temps))   
+
         predictions.append({
             "date": current_date.strftime("%Y-%m-%d"),
+            "low": low_temp,
+            "high": high_temp,
             "temperatures": day_temps.tolist()
         })
     return predictions
