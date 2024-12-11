@@ -191,7 +191,7 @@
                     
                     output += `<div class="hourly-details" id="hourly-${day.date.replace(/-/g, '')}">`;
                     day.temperatures.forEach((temp, hour) => {
-                        output += `<div>Hour ${hour}: ${temp.toFixed(2)}°F</div>`;
+                        output += `<div>Hour ${hour}: ${temp.toFixed(0)}°F</div>`;
                     });
                     output += `</div>`;
                 });
