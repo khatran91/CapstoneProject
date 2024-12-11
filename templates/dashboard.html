@@ -151,7 +151,8 @@
 
     // Set min date for start date as today in 'yyyy-mm-dd' format
     const today = new Date();
-    document.getElementById("start-date").min = today.toISOString().split('T')[0];
+    const formattedDate = today.toISOString().split('T')[0]; 
+    document.getElementById("start-date").min = formattedDate;
 
     // Submit button to get forecast for selected city
     document.getElementById("submit").addEventListener("click", function() {
