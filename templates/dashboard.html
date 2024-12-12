@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Weather Map</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <style>
+        /* Global Styling */
+        body {
+            display: flex;
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            color: #333;
+        }
+        #map-container {
+            width: 65%;
+            height: 100vh;
+        }
+        #map {
+            height: 100%;
+        }
+        .us-focused-tile {
+            filter: grayscale(90%) brightness(0.8);
+        }
+
+        /* Sidebar Styling */
+        #sidebar {
+            width: 35%;
+            padding: 20px;
+            box-sizing: border-box;
+            background-color: #f9f9f9;
+            box-shadow: -2px 0px 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        #sidebar h2 {
+            margin: 0;
+            color: #4A90E2;
+        }
+        label {
+            font-weight: bold;
+            margin-top: 15px;
+        }
+        select, input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 1em;
+        }
+        #submit {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            color: #fff;
+            background-color: #4A90E2;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #submit:hover {
+            background-color: #357ABD;
+        }
+        #prediction {
+            margin-top: 20px;
+            font-size: 1.1em;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0px 1px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .day-forecast {
+            cursor: pointer;
+            background-color: #f2f2f2;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+        .day-forecast:hover {
+            background-color: #e1e1e1;
+        }
+        .hourly-details {
+            display: none;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="map-container">
+    <div id="map"></div>
+</div>
+
+<div id="sidebar">
+    <h2>Weather Forecast</h2>
+    <div>
+        <label for="city">Select a City:</label>
+        <select id="city">
+            <option value="Omaha">Omaha, NE</option>
+            <option value="NewYork">New York, NY</option>
+            <option value="LosAngeles">Los Angeles, CA</option>
+            <option value="Chicago">Chicago, IL</option>
+        </select>
+
+        <label for="start-date">Select Start Date:</label>
+        <input type="date" id="start-date" min="" />
+
+        <button id="submit">Get Forecast</button>
+    </div>
+
+    <div id="prediction"></div>
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+<script>
+    // Define map bounds to limit the view to the US
+    const usBounds = [
+        [24.396308, -125.0], // Southwest corner (Hawaii/California)
+        [49.384358, -66.93457] // Northeast corner (Maine)
+    ];
+
+    // Initialize the map with view restricted to the US and limited zoom out
+    var map = L.map('map', {
+        center: [37.0902, -95.7129], // Center of the US
+        zoom: 4,
+        maxZoom: 12,
+        minZoom: 4,
+        maxBounds: usBounds,
+        maxBoundsViscosity: 1.0
+    });
+
+    // Add a tile layer with a subtle grayscale filter for non-US areas
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© OpenStreetMap contributors, © CartoDB',
+        className: 'us-focused-tile'
+    }).addTo(map);
+
+    // Set min date for start date as today in 'yyyy-mm-dd' format
+    const today = new Date();
+    const formattedDate = today.toISOString().split('T')[0]; 
+    document.getElementById("start-date").min = formattedDate;
+
+    // Submit button to get forecast for selected city
+    document.getElementById("submit").addEventListener("click", function() {
+        const city = document.getElementById("city").value;
+        const startDate = document.getElementById("start-date").value;
+
+        if (!startDate || !city) {
+            alert("Please select both start date and a city.");
+            return;
+        }
+
+        // Call the Flask API with selected data
+        fetch('/get_weather', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ city, start_date: startDate })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const predictions = data.predictions;
+                let output = `<h3>Forecast for ${city}:</h3>`;
+
+                predictions.forEach(day => {
+                    const dayOfWeek = getDayOfWeek(day.date);
+
+                    /*output += `<div class="day-forecast" onclick="toggleHourlyDetails('${day.date}')">
+                        <strong>${day.date}:</strong> 
+                        Low: ${day.low}°F, High: ${day.high}°F
+                    </div>`;*/ 
+                    output += `<div class="day-forecast" onclick="toggleHourlyDetails('${day.date}')">
+                        <strong>${dayOfWeek}:</strong>  
+                        Low: ${day.low}°F, High: ${day.high}°F
+                    </div>`;
+
+                    
+                    output += `<div class="hourly-details" id="hourly-${day.date.replace(/-/g, '')}">`;
+                    day.temperatures.forEach((temp, hour) => {
+                        output += `<div>Hour ${hour}: ${temp.toFixed(0)}°F</div>`;
+                    });
+                    output += `</div>`;
+                });
+
+                document.getElementById('prediction').innerHTML = output;
+            } else {
+                document.getElementById('prediction').innerHTML = `<p>Error: ${data.error}</p>`;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('prediction').innerHTML = "Error fetching the forecast.";
+        });
+    });
+
+    function toggleHourlyDetails(date) {
+        const details = document.getElementById(`hourly-${date.replace(/-/g, '')}`);
+        details.style.display = details.style.display === 'block' ? 'none' : 'block';
+    }
+    function getDayOfWeek(date) {
+    const daysOfWeek = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const dayIndex = new Date(date).getDay();  // Get the day of the week (0-6)
+    return daysOfWeek[dayIndex];  // Return the corresponding day name
+}
+
+</script>
+
+</body>
+</html>
